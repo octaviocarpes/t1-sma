@@ -1,12 +1,14 @@
-console.time();
-for (let index = 0; index < 1000; index++) {
-  const num = Number(Math.random()).toFixed(10)
-  // console.log(num)
-}
-console.timeEnd();
-console.log(U(1,2))
+import { Scheduler } from "./Scheduler";
+import { Queue } from "./Queue";
 
-function U(A, B): number {
-  const num: number = parseFloat(Number(Math.random()).toFixed(10));
-  return (B - A) * num + A;
-}
+const queue = new Queue({
+  minimumArrivalTime: 2,
+  maximumArrivalTime: 4,
+  minmumCapacity: 1,
+  maximumCapacity: 5,
+  servers: 1
+});
+const scheduler = new Scheduler(queue);
+
+scheduler.simulate(3, 100);
+scheduler.print();
