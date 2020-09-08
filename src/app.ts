@@ -12,5 +12,5 @@ const queue = new Queue({
 });
 const scheduler = new Scheduler(queue);
 
-scheduler.simulate(3, 100000);
+scheduler.simulate(3, 100);
 scheduler.print();

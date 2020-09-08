@@ -6,29 +6,27 @@ interface Event {
   time: number;
 }
 
-interface Loss {
-  type: string
-}
-
 export class Scheduler {
   private customers: number;
   private simulations: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
   private finalTime: number;
-  private lastEvent: Event;
+  private lastEvent: Event[];
 
   constructor(
     private queue: Queue
   ) {
     this.customers = 0;
     this.finalTime = 0;
-    this.lastEvent = { type: 'arrival', time: 0 }
+    this.lastEvent = [{ type: 'arrival', time: 0 }]
   }
 
   public print(): void {
-    console.log(this.simulations.length);
-    console.log(this.customers);
-    console.log(this.finalTime);
-    console.log(this.queue.stateTimes);
+    console.log(`Total simulation time: ${this.finalTime}`);
+    this.queue.stateTimes.forEach((element, index) => {
+      const num = element / this.finalTime
+      console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
+    });
+    console.log(`Loss time: ${this.finalTime - (this.queue.stateTimes.reduce((a, b) => a + b))}`);
   }
 
   public simulate(startPoint: number, times: number): void {
@@ -44,32 +42,36 @@ export class Scheduler {
   }
 
   private arrival(event: Event) {
-    const time = this.finalTime - this.lastEvent.time;
+    const lEvent = this.lastEvent.pop()
+    const time = this.finalTime - lEvent.time;
+    console.log(`${this.finalTime} ${lEvent.time} - arival`)
     this.updateQueueState(time, this.customers);
     if (this.customers < this.queue.maximumCapacity) {
       this.customers++;
       if (this.customers <= this.queue.servers) {
-        this.scheduleDeparture(event.time + this.U(this.queue.minmumCapacity, this.queue.maximumCapacity));
+        this.scheduleDeparture(event.time + this.U(this.queue.minimumAttendanceTime, this.queue.maximumAttendanceTime));
       }
     } else {
-      console.log('loss');
+      // console.log('loss');
     }
-    this.lastEvent = Object.assign(event);
+    this.lastEvent.push(event);
     this.scheduleArrival(event.time + this.U(this.queue.minimumArrivalTime, this.queue.maximumArrivalTime));
   }
   
   private departure(event: Event) {
-    const time = this.finalTime - this.lastEvent.time;
+    const lEvent = this.lastEvent.pop()
+    const time = this.finalTime - lEvent.time;
+    console.log(`${this.finalTime} ${lEvent.time} - departure`)
     this.updateQueueState(time, this.customers);
     this.customers--;
     if (this.customers >= this.queue.servers) {
-      this.lastEvent = Object.assign(event);
-      this.scheduleDeparture(this.U(event.time + this.queue.minmumCapacity, this.queue.maximumCapacity))
+      this.lastEvent.push(event);
+      this.scheduleDeparture(event.time + this.U(this.queue.minimumAttendanceTime, this.queue.maximumAttendanceTime))
     }
   }
 
   private scheduleArrival(time: number): void {
-    this.finalTime = this.finalTime + time;
+    this.finalTime = time;
     const arrivalEvent = {
       type: 'arrival',
       time: time
@@ -78,7 +80,7 @@ export class Scheduler {
   }
   
   private scheduleDeparture(time: number): void {
-    this.finalTime = this.finalTime + time;
+    this.finalTime = time;
     const departureEvent = {
       type: 'departure',
       time: time
@@ -87,7 +89,7 @@ export class Scheduler {
   }
 
   private updateQueueState(time: number, index: number): void {
-    this.queue[index]+=time;
+    this.queue.stateTimes[index] += time;
   }
 
   private getFirstEvent(): Event {

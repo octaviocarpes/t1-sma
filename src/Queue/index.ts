@@ -12,5 +12,8 @@ export class Queue {
   constructor(data: Omit< Queue, 'stateTimes'>) {
     Object.assign(this, data);
     this.stateTimes = [this.maximumCapacity];
+    for (let index = 0; index < this.maximumCapacity + 1; index++) {
+      this.stateTimes[index] = 0;
+    }
   }
 }
