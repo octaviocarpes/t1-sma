@@ -3,9 +3,14 @@ export class Queue {
   public maximumArrivalTime: number;
   public minmumCapacity: number;
   public maximumCapacity: number;
+  public minimumAttendanceTime: number;
+  public maximumAttendanceTime: number;
   public servers: number;
 
-  constructor(data: Omit<Queue, 'queue'>) {
+  public stateTimes: number[]
+
+  constructor(data: Omit< Queue, 'stateTimes'>) {
     Object.assign(this, data);
+    this.stateTimes = [this.maximumCapacity];
   }
 }
