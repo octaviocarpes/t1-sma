@@ -10,6 +10,7 @@ export class Scheduler {
   private customers: number;
   private simulations: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
   private finalTime: number;
+  private loss: number;
   private lastEvent: Event[];
 
   constructor(
@@ -17,6 +18,7 @@ export class Scheduler {
   ) {
     this.customers = 0;
     this.finalTime = 0;
+    this.loss = 0;
     this.lastEvent = [{ type: 'arrival', time: 0 }]
   }
 
@@ -27,6 +29,7 @@ export class Scheduler {
       console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
     });
     console.log(`Loss time: ${this.finalTime - (this.queue.stateTimes.reduce((a, b) => a + b))}`);
+    console.log(`Loss: ${this.loss}`);
   }
 
   public simulate(startPoint: number, times: number): void {
@@ -43,8 +46,7 @@ export class Scheduler {
 
   private arrival(event: Event) {
     const lEvent = this.lastEvent.pop()
-    const time = this.finalTime - lEvent.time;
-    console.log(`${this.finalTime} ${lEvent.time} - arival`)
+    const time = event.time - lEvent.time;
     this.updateQueueState(time, this.customers);
     if (this.customers < this.queue.maximumCapacity) {
       this.customers++;
@@ -53,19 +55,19 @@ export class Scheduler {
       }
     } else {
       // console.log('loss');
+      this.loss++;
     }
     this.lastEvent.push(event);
     this.scheduleArrival(event.time + this.U(this.queue.minimumArrivalTime, this.queue.maximumArrivalTime));
   }
-  
+
   private departure(event: Event) {
     const lEvent = this.lastEvent.pop()
-    const time = this.finalTime - lEvent.time;
-    console.log(`${this.finalTime} ${lEvent.time} - departure`)
+    const time = event.time - lEvent.time;
     this.updateQueueState(time, this.customers);
     this.customers--;
+    this.lastEvent.push(event);
     if (this.customers >= this.queue.servers) {
-      this.lastEvent.push(event);
       this.scheduleDeparture(event.time + this.U(this.queue.minimumAttendanceTime, this.queue.maximumAttendanceTime))
     }
   }
@@ -78,7 +80,7 @@ export class Scheduler {
     }
     this.simulations.push(arrivalEvent);
   }
-  
+
   private scheduleDeparture(time: number): void {
     this.finalTime = time;
     const departureEvent = {
