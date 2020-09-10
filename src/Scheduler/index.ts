@@ -28,8 +28,6 @@ export class Scheduler {
       const num = element / this.finalTime
       console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
     });
-    console.log(`Loss time: ${this.finalTime - (this.queue.stateTimes.reduce((a, b) => a + b))}`);
-    console.log(`Loss: ${this.loss}`);
   }
 
   public simulate(startPoint: number, times: number): void {
