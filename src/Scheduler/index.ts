@@ -4,6 +4,7 @@ import TinyQueue from 'tinyqueue';
 interface Event {
   type: string;
   time: number;
+  currentQueue: number;
 }
 
 export class Scheduler {
@@ -14,20 +15,23 @@ export class Scheduler {
   private lastEvent: Event[];
 
   constructor(
-    private queue: Queue
+    private queues: Queue[]
   ) {
     this.customers = 0;
     this.finalTime = 0;
     this.loss = 0;
-    this.lastEvent = [{ type: 'arrival', time: 0 }]
+    this.lastEvent = []
   }
 
   public print(): void {
     console.log(`Total simulation time: ${this.finalTime}`);
-    this.queue.stateTimes.forEach((element, index) => {
-      const num = element / this.finalTime
-      console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
-    });
+    this.queues.forEach((queue, index) => {
+      console.log(`QUEUE ${index}:`)
+      queue.stateTimes.forEach((element, index) => {
+        const num = element / this.finalTime
+        console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
+      });
+    })
   }
 
   public simulate(startPoint: number, times: number): void {
@@ -36,37 +40,42 @@ export class Scheduler {
     while(index < times) {
       const event = this.getFirstEvent();
       if (event.type === 'arrival') {
-        this.arrival(event);
-      } else this.departure(event);
+        this.arrival(event, event.currentQueue);
+      } else this.departure(event, event.currentQueue);
       index++;
     }
   }
 
-  private arrival(event: Event) {
+  private arrival(event: Event, queueIndex: number) {
     const lEvent = this.lastEvent.pop()
     const time = event.time - lEvent.time;
     this.updateQueueState(time, this.customers);
-    if (this.customers < this.queue.maximumCapacity) {
+    if (this.customers < this.queues[queueIndex].maximumCapacity) {
       this.customers++;
-      if (this.customers <= this.queue.servers) {
-        this.scheduleDeparture(event.time + this.U(this.queue.minimumAttendanceTime, this.queue.maximumAttendanceTime));
+      if (this.customers <= this.queues[queueIndex].servers) {
+        this.scheduleDeparture(event.time + this.U(this.queues[queueIndex].minimumAttendanceTime, this.queues[queueIndex].maximumAttendanceTime));
+        if (queueIndex < this.queues.length - 1) {
+          const eventTime: number = event.time;
+          const mediumTime: number = this.U(this.queues[queueIndex + 1].minimumAttendanceTime, this.queues[queueIndex + 1].maximumAttendanceTime);
+          this.scheduleArrival(eventTime + mediumTime);
+        }
       }
     } else {
       // console.log('loss');
       this.loss++;
     }
     this.lastEvent.push(event);
-    this.scheduleArrival(event.time + this.U(this.queue.minimumArrivalTime, this.queue.maximumArrivalTime));
+    this.scheduleArrival(event.time + this.U(this.queues[queueIndex].minimumArrivalTime, this.queues[queueIndex].maximumArrivalTime));
   }
 
-  private departure(event: Event) {
+  private departure(event: Event, queueIndex: number) {
     const lEvent = this.lastEvent.pop()
     const time = event.time - lEvent.time;
     this.updateQueueState(time, this.customers);
     this.customers--;
     this.lastEvent.push(event);
-    if (this.customers >= this.queue.servers) {
-      this.scheduleDeparture(event.time + this.U(this.queue.minimumAttendanceTime, this.queue.maximumAttendanceTime))
+    if (this.customers >= this.queues[queueIndex].servers) {
+      this.scheduleDeparture(event.time + this.U(this.queues[queueIndex].minimumAttendanceTime, this.queues[queueIndex].maximumAttendanceTime))
     }
   }
 

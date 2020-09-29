@@ -3,14 +3,24 @@ import { Queue } from "./Queue";
 
 const queue = new Queue({
   minimumArrivalTime: 2,
-  maximumArrivalTime: 4,
+  maximumArrivalTime: 3,
   minmumCapacity: 1,
   maximumCapacity: 5,
+  minimumAttendanceTime: 2,
+  maximumAttendanceTime: 5,
+  servers: 2
+});
+
+const secondQueue = new Queue({
+  minimumArrivalTime: queue.minimumAttendanceTime,
+  maximumArrivalTime: queue.maximumAttendanceTime,
+  minmumCapacity: 1,
+  maximumCapacity: 3,
   minimumAttendanceTime: 3,
   maximumAttendanceTime: 5,
   servers: 2
 });
-const scheduler = new Scheduler(queue);
+const scheduler = new Scheduler([queue, secondQueue]);
 
 scheduler.simulate(3, 100000);
 scheduler.print();
