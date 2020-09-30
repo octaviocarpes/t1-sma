@@ -1,15 +1,14 @@
 import { Queue } from '../Queue';
 import TinyQueue from 'tinyqueue';
 
-interface Event {
+export interface Event {
   type: string;
   time: number;
-  currentQueue: number;
+  eventQueue: number;
 }
 
 export class Scheduler {
-  private customers: number;
-  private simulations: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
+  private events: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
   private finalTime: number;
   private loss: number;
   private lastEvent: Event[];
@@ -17,10 +16,9 @@ export class Scheduler {
   constructor(
     private queues: Queue[]
   ) {
-    this.customers = 0;
     this.finalTime = 0;
     this.loss = 0;
-    this.lastEvent = []
+    this.lastEvent = [];
   }
 
   public print(): void {
@@ -34,80 +32,31 @@ export class Scheduler {
     })
   }
 
-  public simulate(startPoint: number, times: number): void {
-    let index = 0;
-    this.scheduleArrival(startPoint);
-    while(index < times) {
-      const event = this.getFirstEvent();
-      if (event.type === 'arrival') {
-        this.arrival(event, event.currentQueue);
-      } else this.departure(event, event.currentQueue);
-      index++;
-    }
-  }
-
-  private arrival(event: Event, queueIndex: number) {
-    const lEvent = this.lastEvent.pop()
-    const time = event.time - lEvent.time;
-    this.updateQueueState(time, this.customers);
-    if (this.customers < this.queues[queueIndex].maximumCapacity) {
-      this.customers++;
-      if (this.customers <= this.queues[queueIndex].servers) {
-        this.scheduleDeparture(event.time + this.U(this.queues[queueIndex].minimumAttendanceTime, this.queues[queueIndex].maximumAttendanceTime));
-        if (queueIndex < this.queues.length - 1) {
-          const eventTime: number = event.time;
-          const mediumTime: number = this.U(this.queues[queueIndex + 1].minimumAttendanceTime, this.queues[queueIndex + 1].maximumAttendanceTime);
-          this.scheduleArrival(eventTime + mediumTime);
-        }
-      }
-    } else {
-      // console.log('loss');
-      this.loss++;
-    }
-    this.lastEvent.push(event);
-    this.scheduleArrival(event.time + this.U(this.queues[queueIndex].minimumArrivalTime, this.queues[queueIndex].maximumArrivalTime));
-  }
-
-  private departure(event: Event, queueIndex: number) {
-    const lEvent = this.lastEvent.pop()
-    const time = event.time - lEvent.time;
-    this.updateQueueState(time, this.customers);
-    this.customers--;
-    this.lastEvent.push(event);
-    if (this.customers >= this.queues[queueIndex].servers) {
-      this.scheduleDeparture(event.time + this.U(this.queues[queueIndex].minimumAttendanceTime, this.queues[queueIndex].maximumAttendanceTime))
-    }
-  }
-
-  private scheduleArrival(time: number): void {
-    this.finalTime = time;
-    const arrivalEvent = {
-      type: 'arrival',
-      time: time
-    }
-    this.simulations.push(arrivalEvent);
-  }
-
-  private scheduleDeparture(time: number): void {
-    this.finalTime = time;
-    const departureEvent = {
-      type: 'departure',
-      time: time
-    }
-    this.simulations.push(departureEvent);
-  }
-
-  private updateQueueState(time: number, index: number): void {
-    this.queue.stateTimes[index] += time;
-  }
-
   private getFirstEvent(): Event {
-    const first = this.simulations.pop();
+    const first = this.events.pop();
     return first;
   }
 
-  private U(A, B): number {
-    const num: number = parseFloat(Number(Math.random()).toFixed(10));
-    return (B - A) * num + A;
+  public simulate(startPoint: number, iterations: number): void {
+    let index = 0;
+    const firstEvents: Event[] = this.queues[0].scheduleArrival(startPoint, 0);
+    console.log(firstEvents)
+    this.events.push(firstEvents[0]);
+
+    while(index < iterations) {
+      const event = this.getFirstEvent();
+      if (event.type === 'arrival') {
+        const newEvent: Event[] = this.queues[event.eventQueue].scheduleArrival(event.time, event.eventQueue);
+        newEvent.forEach(event => {
+          this.events.push(event);
+        });
+      } else {
+        const newEvent: Event[] = this.queues[event.eventQueue].scheduleDeparture(event.time, event.eventQueue);
+        newEvent.forEach(event => {
+          this.events.push(event);
+        });
+      }
+      index++;
+    }
   }
 }
