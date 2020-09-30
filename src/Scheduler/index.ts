@@ -10,6 +10,7 @@ export class Scheduler {
   private events: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
   private finalTime: number;
   private loss: number;
+  private lasTime: number;
   private lastEvent: Event[];
 
   constructor(
@@ -18,16 +19,18 @@ export class Scheduler {
     this.finalTime = 0;
     this.loss = 0;
     this.lastEvent = [];
+    this.lasTime = 0;
   }
 
   public print(): void {
     console.log(`Total simulation time: ${this.finalTime}`);
     this.queues.forEach((queue, index) => {
-      console.log(`QUEUE ${index}:`)
+      console.log(`Queue : Q${index + 1} (G/G/${queue.minmumCapacity}/${queue.maximumCapacity})`)
       queue.stateTimes.forEach((element, index) => {
         const num = element / this.finalTime
-        console.log(`Total Q${index} state time: ${element} - ${(num * 100).toFixed(2)}%`)
+        console.log(`State ${index} time: ${element} - ${(num * 100).toFixed(2)}%`)
       });
+      console.log('\n')
     })
   }
 
@@ -42,37 +45,38 @@ export class Scheduler {
       time: startPoint,
       type: 'ch1',
     });
-
+    
     while(index < iterations) {
       const event = this.getFirstEvent()
+      this.finalTime = event.time
       index++;
-
-      console.log(event)
 
       switch (event.type) {
         case 'ch1':
           this.ch1(event);
-          return;
+          break;
 
         case 'sa2':
           this.sa2(event);
-          return;
+          break;
 
         case 'p12':
           this.p12(event);
-          return;
+          break;
 
         default:
-          return;
+          break;
       }
     }
   }
 
   private contabTime(event: Event) {
+    const diffTime = event.time - this.lasTime
+    this.lasTime = event.time
     const firstQueue = this.queues[0];
     const secondQueue = this.queues[1];
-    firstQueue.updateQueueState(event.time, firstQueue.customers)
-    secondQueue.updateQueueState(event.time, secondQueue.customers)
+    firstQueue.updateQueueState(diffTime, firstQueue.customers)
+    secondQueue.updateQueueState(diffTime, secondQueue.customers)
   }
 
   private ch1(event : Event) {
@@ -117,7 +121,7 @@ export class Scheduler {
 
       if (secondQueue.customers <= secondQueue.minmumCapacity) {
         const newTime = event.time + this.U(secondQueue.minimumAttendanceTime, secondQueue.maximumAttendanceTime)
-        this.scheduleP12(newTime)
+        this.scheduleSA2(newTime)
       }
     }
   }
