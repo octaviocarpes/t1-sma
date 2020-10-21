@@ -25,6 +25,9 @@ export class Queue {
   }
 
   public updateQueueState(time: number, index: number): void {
+    if (index > this.maximumCapacity) {
+      return
+    }
     this.stateTimes[index] += time;
   }
 }

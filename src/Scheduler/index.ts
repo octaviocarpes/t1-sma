@@ -111,28 +111,36 @@ export class Scheduler {
 
       switch(event.type) {
         case 'ch1':
-          this.multiQueueCH1(event) // ok
+          this.multiQueueCH1(event)
+          break;
 
         case 'p12':
-          this.multiQueueP12(event) // ok
+          this.multiQueueP12(event)
+          break;
 
         case 'p13':
           this.multiQueueP13(event) // ok
+          break;
 
         case 'sa2':
           this.multiQueueSA2(event) // ok
+          break;
 
         case 'p21':
           this.multiQueueP21(event) // ok
+          break;
 
         case 'p23':
           this.multiQueueP23(event) // ok
+          break;
 
         case 'sa3':
           this.multiQueueSA3(event) // ok
+          break;
 
         case 'p32':
           this.multiQueueP32(event) // ok
+          break;
       }
     }
   }
