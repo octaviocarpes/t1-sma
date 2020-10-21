@@ -10,7 +10,8 @@ export class Scheduler {
   private lastEvent: Event[];
 
   constructor(
-    private queues: Queue[]
+    private queues: Queue[],
+    private network: any
   ) {
     this.finalTime = 0;
     this.loss = 0;
@@ -132,189 +133,175 @@ export class Scheduler {
 
         case 'p32':
           this.multiQueueP32(event) // ok
-
       }
     }
   }
 
   private multiQueueCH1(event: Event) {
     this.contabTime(event)
-    const queue = this.queues[0]
 
-    if (queue.customers < queue.maximumCapacity) {
-      queue.customers++
+    if (this.queues[0].customers < this.queues[0].maximumCapacity) {
+      this.queues[0].customers++
 
-      if (queue.customers <= queue.servers) {
+      if (this.queues[0].customers <= this.queues[0].servers) {
         const rng = Math.random()
-        const time = event.time + this.U(queue.minimumAttendanceTime, queue.maximumAttendanceTime)
+        const time = event.time + this.U(this.queues[0].minimumAttendanceTime, this.queues[0].maximumAttendanceTime)
 
-        if (rng < queue.routing[0].chance) {
-          this.events.push(new Event(queue.routing[0].to, 'queue-0', 'queue-1', time))
+        if (rng < this.queues[0].routing[0].chance) {
+          this.events.push(new Event(this.queues[0].routing[0].to, 'queue-0', 'queue-1', time))
         } else {
-          this.events.push(new Event(queue.routing[1].to, 'queue-0', 'queue-2', time))
+          this.events.push(new Event(this.queues[0].routing[1].to, 'queue-0', 'queue-2', time))
         }
       }
     }
-    const time = event.time + this.U(queue.minimumArrivalTime, queue.maximumArrivalTime)
+    const time = event.time + this.U(this.queues[0].minimumArrivalTime, this.queues[0].maximumArrivalTime)
     this.events.push(new Event('ch1', 'queue-0', 'queue-0', time))
   }
 
   private multiQueueP12(event: Event) {
     this.contabTime(event)
-    const firstQueue = this.queues[0]
-    const secondQueue = this.queues[1]
 
-    firstQueue.customers--
-    if (firstQueue.customers >= firstQueue.servers) {
+    this.queues[0].customers--
+    if (this.queues[0].customers >= this.queues[0].servers) {
       const rng = Math.random()
-      const time = event.time + this.U(firstQueue.maximumAttendanceTime, firstQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[0].maximumAttendanceTime, this.queues[0].maximumAttendanceTime)
 
-      if (rng < firstQueue.routing[0].chance) {
-        this.events.push(new Event(firstQueue.routing[0].to, 'queue-0', 'queue-1', time))
+      if (rng < this.queues[0].routing[0].chance) {
+        this.events.push(new Event(this.queues[0].routing[0].to, 'queue-0', 'queue-1', time))
       } else {
-        this.events.push(new Event(firstQueue.routing[1].to, 'queue-0', 'queue-2', time))
+        this.events.push(new Event(this.queues[0].routing[1].to, 'queue-0', 'queue-2', time))
       }
     }
 
-    secondQueue.customers++
-    if (secondQueue.customers <= secondQueue.minmumCapacity) {
-      const time = event.time + this.U(secondQueue.maximumAttendanceTime, secondQueue.maximumAttendanceTime)
+    this.queues[1].customers++
+    if (this.queues[1].customers <= this.queues[1].minmumCapacity) {
+      const time = event.time + this.U(this.queues[1].maximumAttendanceTime, this.queues[1].maximumAttendanceTime)
       this.events.push(new Event('sa2', 'queue-1', 'out', time))
     }
   }
 
   private multiQueueP13(event: Event) {
     this.contabTime(event)
-    const firstQueue = this.queues[0]
-    const thirdQueue = this.queues[2]
 
-    firstQueue.customers--
-    if (firstQueue.customers >= firstQueue.servers) {
+    this.queues[0].customers--
+    if (this.queues[0].customers >= this.queues[0].servers) {
       const rng = Math.random()
-      const time = event.time + this.U(firstQueue.maximumAttendanceTime, firstQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[0].maximumAttendanceTime, this.queues[0].maximumAttendanceTime)
 
-      if (rng < firstQueue.routing[0].chance) {
-        this.events.push(new Event(firstQueue.routing[0].to, 'queue-0', 'queue-1', time))
+      if (rng < this.queues[0].routing[0].chance) {
+        this.events.push(new Event(this.queues[0].routing[0].to, 'queue-0', 'queue-1', time))
       } else {
-        this.events.push(new Event(firstQueue.routing[1].to, 'queue-0', 'queue-2', time))
+        this.events.push(new Event(this.queues[0].routing[1].to, 'queue-0', 'queue-2', time))
       }
     }
 
-    thirdQueue.customers++
-    if (thirdQueue.customers <= thirdQueue.minmumCapacity) {
-      const time = event.time + this.U(thirdQueue.maximumAttendanceTime, thirdQueue.maximumAttendanceTime)
+    this.queues[2].customers++
+    if (this.queues[2].customers <= this.queues[2].minmumCapacity) {
+      const time = event.time + this.U(this.queues[2].maximumAttendanceTime, this.queues[2].maximumAttendanceTime)
       this.events.push(new Event('sa3', 'queue-2', 'out', time))
     }
   }
 
   private multiQueueSA2(event: Event) {
     this.contabTime(event)
-    const queue = this.queues[1]
 
-    queue.customers--
-    if (queue.customers >= queue.minmumCapacity) {
-      const time = event.time + this.U(queue.maximumAttendanceTime, queue.maximumAttendanceTime)
+    this.queues[1].customers--
+    if (this.queues[1].customers >= this.queues[1].minmumCapacity) {
+      const time = event.time + this.U(this.queues[1].maximumAttendanceTime, this.queues[1].maximumAttendanceTime)
       this.events.push(new Event('sa2', 'queue-2', 'out', time))
     }
   }
 
   private multiQueueP21(event: Event) {
     this.contabTime(event)
-    const firstQueue = this.queues[0]
-    const secondQueue = this.queues[1]
 
-    secondQueue.customers--
-    if (secondQueue.customers >= secondQueue.servers) {
+    this.queues[1].customers--
+    if (this.queues[1].customers >= this.queues[1].servers) {
       const rng = Math.random()
-      const time = event.time + this.U(secondQueue.maximumAttendanceTime, secondQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[1].maximumAttendanceTime, this.queues[1].maximumAttendanceTime)
 
-      if (rng < secondQueue.routing[0].chance) {
-        this.events.push(new Event(secondQueue.routing[0].to, 'queue-1', 'out', time))
-      } else if (rng < secondQueue.routing[1].chance) {
-        this.events.push(new Event(secondQueue.routing[1].to, 'queue-1', 'queue-0', time))
+      if (rng < this.queues[1].routing[0].chance) {
+        this.events.push(new Event(this.queues[1].routing[0].to, 'queue-1', 'out', time))
+      } else if (rng < this.queues[1].routing[1].chance) {
+        this.events.push(new Event(this.queues[1].routing[1].to, 'queue-1', 'queue-0', time))
       } else {
-        this.events.push(new Event(secondQueue.routing[2].to, 'queue-1', 'queue-2', time))
+        this.events.push(new Event(this.queues[1].routing[2].to, 'queue-1', 'queue-2', time))
       }
     }
 
-    firstQueue.customers++
-    if (firstQueue.customers <= firstQueue.minmumCapacity) {
+    this.queues[0].customers++
+    if (this.queues[0].customers <= this.queues[0].minmumCapacity) {
       const rng = Math.random()
-      const time = event.time + this.U(firstQueue.maximumAttendanceTime, firstQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[0].maximumAttendanceTime, this.queues[0].maximumAttendanceTime)
 
-      if (rng < firstQueue.routing[0].chance) {
-        this.events.push(new Event(firstQueue.routing[0].to, 'queue-0', 'queue-1', time))
+      if (rng < this.queues[0].routing[0].chance) {
+        this.events.push(new Event(this.queues[0].routing[0].to, 'queue-0', 'queue-1', time))
       } else {
-        this.events.push(new Event(firstQueue.routing[1].to, 'queue-0', 'queue-2', time))
+        this.events.push(new Event(this.queues[0].routing[1].to, 'queue-0', 'queue-2', time))
       }
     }
   }
 
   private multiQueueP23(event: Event) {
     this.contabTime(event)
-    const secondQueue = this.queues[1]
-    const thirdQueue = this.queues[2]
 
-    secondQueue.customers--
-    if (secondQueue.customers >= secondQueue.servers) {
+    this.queues[1].customers--
+    if (this.queues[1].customers >= this.queues[1].servers) {
       const rng = Math.random()
-      const time = event.time + this.U(secondQueue.maximumAttendanceTime, secondQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[1].maximumAttendanceTime, this.queues[1].maximumAttendanceTime)
 
-      if (rng < secondQueue.routing[0].chance) {
-        this.events.push(new Event(secondQueue.routing[0].to, 'queue-1', 'out', time))
-      } else if (rng < secondQueue.routing[1].chance) {
-        this.events.push(new Event(secondQueue.routing[1].to, 'queue-1', 'queue-0', time))
+      if (rng < this.queues[1].routing[0].chance) {
+        this.events.push(new Event(this.queues[1].routing[0].to, 'queue-1', 'out', time))
+      } else if (rng < this.queues[1].routing[1].chance) {
+        this.events.push(new Event(this.queues[1].routing[1].to, 'queue-1', 'queue-0', time))
       } else {
-        this.events.push(new Event(secondQueue.routing[2].to, 'queue-1', 'queue-2', time))
+        this.events.push(new Event(this.queues[1].routing[2].to, 'queue-1', 'queue-2', time))
       }
     }
 
-    thirdQueue.customers++
-    if (thirdQueue.customers <= thirdQueue.minmumCapacity) {
-      const time = event.time + this.U(thirdQueue.maximumAttendanceTime, thirdQueue.maximumAttendanceTime)
+    this.queues[2].customers++
+    if (this.queues[2].customers <= this.queues[2].minmumCapacity) {
+      const time = event.time + this.U(this.queues[2].maximumAttendanceTime, this.queues[2].maximumAttendanceTime)
       this.events.push(new Event('sa3', 'queue-2', 'out', time))
     }
   }
 
   private multiQueueP32(event: Event) {
     this.contabTime(event)
-    const thirdQueue = this.queues[2]
-    const secondQueue = this.queues[1]
 
-    thirdQueue.customers--
-    if (thirdQueue.customers >= thirdQueue.servers) {
+    this.queues[2].customers--
+    if (this.queues[2].customers >= this.queues[2].servers) {
       const rng = Math.random()
-      const time = event.time + this.U(thirdQueue.maximumAttendanceTime, thirdQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[2].maximumAttendanceTime, this.queues[2].maximumAttendanceTime)
 
-      if (rng < thirdQueue.routing[0].chance) {
-        this.events.push(new Event(thirdQueue.routing[0].to, 'queue-2', 'queue-1', time))
+      if (rng < this.queues[2].routing[0].chance) {
+        this.events.push(new Event(this.queues[2].routing[0].to, 'queue-2', 'queue-1', time))
       } else {
-        this.events.push(new Event(thirdQueue.routing[1].to, 'queue-2', 'out', time))
+        this.events.push(new Event(this.queues[2].routing[1].to, 'queue-2', 'out', time))
       }
     }
 
-    secondQueue.customers++
-    if (secondQueue.customers <= secondQueue.minmumCapacity) {
+    this.queues[1].customers++
+    if (this.queues[1].customers <= this.queues[1].minmumCapacity) {
       const rng = Math.random()
-      const time = event.time + this.U(secondQueue.maximumAttendanceTime, secondQueue.maximumAttendanceTime)
+      const time = event.time + this.U(this.queues[1].maximumAttendanceTime, this.queues[1].maximumAttendanceTime)
 
-      if (rng < secondQueue.routing[0].chance) {
-        this.events.push(new Event(secondQueue.routing[0].to, 'queue-1', 'out', time))
-      } else if (rng < secondQueue.routing[1].chance) {
-        this.events.push(new Event(secondQueue.routing[1].to, 'queue-1', 'queue-0', time))
+      if (rng < this.queues[1].routing[0].chance) {
+        this.events.push(new Event(this.queues[1].routing[0].to, 'queue-1', 'out', time))
+      } else if (rng < this.queues[1].routing[1].chance) {
+        this.events.push(new Event(this.queues[1].routing[1].to, 'queue-1', 'queue-0', time))
       } else {
-        this.events.push(new Event(secondQueue.routing[2].to, 'queue-1', 'queue-2', time))
+        this.events.push(new Event(this.queues[1].routing[2].to, 'queue-1', 'queue-2', time))
       }
     }
   }
 
   private multiQueueSA3(event: Event) {
     this.contabTime(event)
-    const queue = this.queues[2]
 
-    queue.customers--
-    if (queue.customers >= queue.minmumCapacity) {
-      const time = event.time + this.U(queue.maximumAttendanceTime, queue.maximumAttendanceTime)
+    this.queues[2].customers--
+    if (this.queues[2].customers >= this.queues[2].minmumCapacity) {
+      const time = event.time + this.U(this.queues[2].maximumAttendanceTime, this.queues[2].maximumAttendanceTime)
       this.events.push(new Event('sa3', 'queue-2', 'out', time))
     }
   }

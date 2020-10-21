@@ -46,7 +46,21 @@ const thirdQueue = new Queue({
   ]
 });
 
-const scheduler = new Scheduler([queue, secondQueue, thirdQueue]);
+const network = {
+  Q1: {
+    Q2: 0.8,
+    Q3: 0.2
+  },
+  Q2: {
+    Q1: 0.3,
+    Q3: 0.5
+  },
+  Q3: {
+    Q2: 0.7
+  }
+}
+
+const scheduler = new Scheduler([ queue, secondQueue, thirdQueue ], network);
 
 scheduler.simulate(1, 100000);
 scheduler.print();
