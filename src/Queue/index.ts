@@ -1,7 +1,3 @@
-export interface Routing {
-  to: string
-  chance: number
-}
 export class Queue {
   public minimumArrivalTime: number;
   public maximumArrivalTime: number;
@@ -13,7 +9,6 @@ export class Queue {
 
   public stateTimes: number[]
   public customers: number;
-  public routing: Routing[]
 
   constructor(data) {
     Object.assign(this, data);
