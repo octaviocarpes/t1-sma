@@ -1,0 +1,42 @@
+{
+  "queues": [
+    {
+      "name": "Q1",
+      "minimumArrivalTime": 1,
+      "maximumArrivalTime": 4,
+      "minmumCapacity": 1,
+      "minimumAttendanceTime": 1,
+      "maximumAttendanceTime": 1.5,
+      "servers": 1,
+      "routing": {
+        "Q2": 0.8,
+        "Q3": 0.2
+      }
+    },
+    {
+      "name": "Q2",
+      "minmumCapacity": 3,
+      "maximumCapacity": 5,
+      "minimumAttendanceTime": 5,
+      "maximumAttendanceTime": 10,
+      "servers": 3,
+      "routing": {
+        "Q1": 0.3,
+        "Q3": 0.5,
+        "OUT": 0.2
+      }
+    },
+    {
+      "name": "Q3",
+      "minmumCapacity": 2,
+      "maximumCapacity": 8,
+      "minimumAttendanceTime": 10,
+      "maximumAttendanceTime": 20,
+      "servers": 2,
+      "routing": {
+        "Q2": 0.7,
+        "OUT": 0.3
+      }
+    }
+  ]
+}

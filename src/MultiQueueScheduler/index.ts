@@ -1,31 +1,37 @@
 import { Queue } from '../Queue';
 import TinyQueue from 'tinyqueue';
 import { setTextRange } from 'typescript';
+import { MultiQueue } from '../Queue/MultiQueue';
 
 interface Event {
-  from: string,
-  to: string,
   time: number
-  type: string
+  type: 'ARRIVAL' | 'TRANSITION' | 'DEPARTURE'
+  destination: string
+  origin: string
 }
 
 export class MultiQueueScheduler {
   private events: TinyQueue<Event> = new TinyQueue([], (a, b) => { return a.time - b.time });
-  private eventTypes: any[]
   private finalTime: number;
   private loss: number;
   private lasTime: number;
   private lastEvent: Event[];
+  private queues: MultiQueue[]
+  private randomNumbers: number[]
 
-  constructor(
-    private queues: Queue[],
-    private network: any
-  ) {
+  constructor(definition: any) {
+    this.queues = []
+
+    for (let i = 0; i < definition.queues.length; i++) {
+      const queue = new MultiQueue(definition.queues[i])
+      this.queues.push(queue)
+    }
+
     this.finalTime = 0;
     this.loss = 0;
     this.lastEvent = [];
     this.lasTime = 0;
-    this.eventTypes = []
+    this.randomNumbers = []
   }
 
   public print(): void {
@@ -45,56 +51,37 @@ export class MultiQueueScheduler {
     return first;
   }
 
-  private simulateMultiQueuesWithRouting(startPoint: number, iterations: number) {
-    let index = 0
+  private getQueueByName(name: string) {
+    return this.queues.filter(queue => queue.name === name)[0]
+  }
+
+  private consumeRandom() {
+    return this.randomNumbers.pop()
+  }
+
+  private simulateMultiQueuesWithRouting(startPoint: number) {
     this.events.push({
-      type: 'ch-1',
-      from: 'Q-0',
-      to: 'Q-0',
-      time: startPoint
+      type: 'ARRIVAL',
+      time: startPoint,
+      destination: 'Q1',
+      origin: 'Customer'
     })
 
-    while (index < iterations) {
-      index++
+    while (this.randomNumbers.length) {
       const event = this.getFirstEvent()
       this.finalTime = event.time
 
-      // console.log(event, index)
-
       switch(event.type) {
-        case 'ch-1':
-          this.ch(event, this.queues[0])
+        case 'ARRIVAL':
+          this.treatArrivalEvent(event)
           break;
 
-        case 'p-12':
-          this.p(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
+        case 'TRANSITION':
+          this.treatTransitionEvent(event)
           break;
 
-        case 'p-13':
-          this.p(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        case 'p-21':
-          this.p(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        case 'p-23':
-          this.p(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        case 'sa-2':
-          this.sa(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        case 'p-32':
-          this.p(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        case 'sa-3':
-          this.sa(event, this.getQueueIndex(event.from), this.getQueueIndex(event.to))
-          break;
-
-        default:
+        case 'DEPARTURE':
+          this.treatDepartureEvent(event)
           break;
       }
     }
@@ -102,107 +89,115 @@ export class MultiQueueScheduler {
     this.print()
   }
 
-  private drawQueue(randomNumber, network) {
-    console.log(network)
-    const keys = Object.keys(network)
-    for(let i = 0; i < keys.length; i++) {
-      console.log(network[keys[i]].chance)
+  private treatArrivalEvent(event: Event) {
+    this.contabTime(event)
+    const queue = this.getQueueByName(event.destination)
+
+    if (queue.customers < queue.maximumCapacity) {
+      queue.customers++
+
+      if (queue.customers <= queue.servers) {
+        const rng = this.consumeRandom()
+        const time = event.time + this.U(queue.minimumAttendanceTime, queue.maximumAttendanceTime)
+        const destination = queue.drawDestination(rng)
+        this.scheduleEvent({
+          time,
+          destination,
+          origin: queue.name,
+          type: 'TRANSITION'
+        })
+      }
     }
-    return 0
+
+    const time = event.time + this.U(queue.minimumArrivalTime, queue.maximumArrivalTime)
+    this.scheduleEvent({
+      time,
+      origin: 'Customer',
+      destination: 'Q1',
+      type: 'ARRIVAL'
+    })
   }
 
-  private ch(event: Event, firstQ: Queue) {
+  private treatTransitionEvent(event: Event) {
     this.contabTime(event)
+    const originQueue = this.getQueueByName(event.origin)
+    const destinationQueue = this.getQueueByName(event.destination)
 
-    if (firstQ.customers < firstQ.maximumCapacity) {
-      firstQ.customers++
+    originQueue.customers--
+    if (originQueue.customers >= originQueue.servers) {
+      const rng = this.consumeRandom()
+      const time = event.time + this.U(originQueue.minimumAttendanceTime, originQueue.maximumAttendanceTime)
+      const destination = originQueue.drawDestination(rng)
 
-      if (firstQ.customers <= firstQ.servers) {
-        const randomNumber = Math.random()
-        const time = event.time + this.U(firstQ.minimumAttendanceTime, firstQ.maximumAttendanceTime)
-        const q0Network = this.network[0]
+      if (destination === 'OUT') {
+        this.scheduleEvent({
+          time,
+          origin: originQueue.name,
+          destination,
+          type: 'DEPARTURE'
+        })
+      } else {
+        this.scheduleEvent({
+          time,
+          origin: originQueue.name,
+          destination,
+          type: 'TRANSITION'
+        })
+      }
+    }
 
-        if (q0Network['Q-1'].chance < randomNumber) {
+    if (destinationQueue.customers < destinationQueue.maximumCapacity) {
+      destinationQueue.customers++
+      if (destinationQueue.customers <= destinationQueue.servers) {
+        const rng = this.consumeRandom()
+        const time = event.time + this.U(destinationQueue.minimumAttendanceTime, destinationQueue.maximumAttendanceTime)
+        const destination = destinationQueue.drawDestination(rng)
+
+        if (destination === 'OUT') {
           this.scheduleEvent({
-            type: 'p-12',
-            from: 'Q-0',
-            to: 'Q-1',
-            time: time
+            time,
+            origin: destinationQueue.name,
+            destination,
+            type: 'DEPARTURE'
           })
         } else {
           this.scheduleEvent({
-            type: 'p-13',
-            from: 'Q-0',
-            to: 'Q-2',
-            time: time
+            time,
+            origin: destinationQueue.name,
+            destination,
+            type: 'TRANSITION'
           })
         }
       }
     }
-    const time = event.time + this.U(firstQ.minimumArrivalTime, firstQ.maximumArrivalTime)
-    this.scheduleEvent({
-      type: 'ch-1',
-      from: 'Q-0',
-      to: 'Q-0',
-      time: time
-    })
   }
 
-  private p(event: Event, firstQ: number, secondQ: number) {
+  private treatDepartureEvent(event: Event) {
     this.contabTime(event)
-    const first = this.queues[firstQ]
-    const second = this.queues[secondQ]
-    first.customers--
+    const queue = this.getQueueByName(event.origin)
 
-    if (first.customers >= first.servers) {
-      const randomNumber = Math.random()
-      const time = event.time + this.U(first.minimumAttendanceTime, first.maximumAttendanceTime)
+    queue.customers--
+    if (queue.customers >= queue.servers) {
+      const rng = this.consumeRandom()
+      const time = event.time + this.U(queue.minimumAttendanceTime, queue.maximumAttendanceTime)
+      const destination = queue.drawDestination(rng)
 
-      const selectedQueue = this.drawQueue(randomNumber, this.network[firstQ])
-
-      this.scheduleEvent({
-        type: `p-${first}${selectedQueue}`,
-        from: `Q-${first}`,
-        to: `Q-${selectedQueue}`,
-        time: time,
-      })
+      if (destination === 'OUT') {
+        this.scheduleEvent({
+          time,
+          origin: queue.name,
+          destination,
+          type: 'DEPARTURE'
+        })
+      } else {
+        this.scheduleEvent({
+          time,
+          origin: queue.name,
+          destination,
+          type: 'TRANSITION'
+        })
+      }
     }
-
-    second.customers++
-
-    if (second.customers <= second.servers) {
-      const time = event.time + this.U(second.minimumAttendanceTime, second.maximumAttendanceTime)
-      this.scheduleEvent({
-        type: `sa-${secondQ}`,
-        from: `Q-${secondQ}`,
-        to: 'OUT',
-        time: time,
-      })
-    }
-  }
-  
-  private sa(event: Event, firstQ: number, secondQ: number) {
-    this.contabTime(event)
-    const first = this.queues[firstQ]
-
-    first.customers--
-    if (first.customers >= first.servers) {
-      const randomNumber = Math.random()
-      const time = event.time + this.U(first.minimumAttendanceTime, first.maximumAttendanceTime)
-
-      const selectedQueue = this.drawQueue(randomNumber, this.network[firstQ])
-
-      this.scheduleEvent({
-        type: `p-${first}${selectedQueue}`,
-        from: `Q-${first}`,
-        to: `Q-${selectedQueue}`,
-        time: time,
-      })
-    }
-  }
-
-  private getQueueIndex (name: string): number {
-    return parseInt(name.split('-')[1])
   }
 
   private scheduleEvent (event: Event) {
@@ -210,7 +205,14 @@ export class MultiQueueScheduler {
   }
 
   public simulate(startPoint: number, iterations: number): void {
-    this.simulateMultiQueuesWithRouting(startPoint, iterations)
+    let count = 0
+    while (count < iterations) {
+      count++
+      const random = Math.random()
+      this.randomNumbers.push(random)
+    }
+
+    this.simulateMultiQueuesWithRouting(startPoint)
   }
 
   private contabTime(event: Event) {
